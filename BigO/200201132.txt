@@ -1,0 +1,605 @@
+// 200201132 (I.Ögretim)
+// Muhammet Cüneyd Kurtbas
+// ProLab-II-Proje-1
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <limits.h>
+
+//yer karmasikliginda ele alinan degisken tiplerim
+char *degiskenTipleri[10] = {{"int "},{"char "},{"float "},{"double "},{"long "},{"short "}};
+int degiskenTipleriByteDegerleri[6] = {4,1,4,8,4,2};
+
+//ilk karakter { isareti mi ve gerisi bos mu oyleyse 1 dondur
+int BlokBaslatMi(char satir[]){
+    if(satir[0] == '{' && satir[1] == '\0'){
+        return 1;
+    }
+    return 0;
+}
+
+//ilk karakter } isareti mi ve gerisi bos mu oyleyse 1 dondur
+int BlokBitirMi(char satir[]){
+    if(satir[0] == '}' && satir[1] == '\0'){
+        return 1;
+    }
+    return 0;
+}
+
+// okunan satirin kutuphane, yorum satiri, fonk tipi mi olup olmadiginin kontrolu
+int KodDegilMi(char satir[]){
+    char sayilmayanlar[4][20] = {{"#include"},{"void"},{"return"},{"int main"}};//,{""}
+    for(int i=0;i<4;i++){
+        if(StartsWith(sayilmayanlar[i], satir) == 1)
+            return 1;
+    }
+    if((satir[0] == '/' && satir[1] == '/') || satir[0] == '\n' || satir[0] == '\0')
+        return 1;
+    return 0;
+}
+
+//icine gonderdigimiz stringin sol tarafindaki bosluklari sil
+char *Ltrim(char *s)
+{
+    while(isspace(*s)) s++;
+    return s;
+}
+
+//icine gonderdigimiz stringin sag tarafindaki bosluklari sil
+char *Rtrim(char *s)
+{
+    char* back = s + strlen(s);
+    while(isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+//boslularin hepsini sil
+char *Trim(char *s)
+{
+    return Rtrim(Ltrim(s));
+}
+
+//string ve icinde aranacak kismi gonder
+//orn: int gonderdim, string int main() ile basliyorsa 1 dondur degilse sifir
+int StartsWith(const char *pre, const char *str)
+{
+    size_t lenpre = strlen(pre), lenstr = strlen(str);
+    if(lenstr < lenpre)
+        return 0;
+    if(memcmp(pre, str, lenpre) == 0)
+        return 1;
+    return 0;
+}
+//bos char dizisi, kontrol kismi, kactan baslayacak, kac karakter
+//bir satir gonderdin 3'ten basla 3 tane al destinationa al
+//for (......); orn: 4 ve 6 gonderdik sadece for'un icini aldik
+void SubString(char *destination, const char *source, int beg, int n)
+{
+    while (n > 0)
+    {
+        *destination = *(source + beg);
+
+        destination++;
+        source++;
+        n--;
+    }
+    *destination = '\0';
+}
+
+//For'un N'e kadar mi yoksa bir sayiya kadar mi dondugu
+int ForNMi(char *satir){
+    char *tempSatir = satir;
+    if(StartsWith("for(", satir) == 1){ //for boyle basliyorsa
+        SubString(tempSatir, satir, 4, strlen(satir)-5);
+    }else if(StartsWith("for (", satir) == 1){ //for boyle basliyorsa
+        SubString(tempSatir, satir, 5, strlen(satir)-6);
+    }else
+        return 0;
+
+    //; isaretine gore bolerek for un icini parcaliyoruz
+    char *tanimKismi = strtok(tempSatir,";");
+    char *kontrolKismi = strtok(NULL, ";");
+    char *artirmaKismi = strtok(NULL, ";");
+
+    kontrolKismi = Trim(kontrolKismi);
+
+    //log n icin
+    char *temp1 = strstr(artirmaKismi, "/");
+    char *temp2 = strstr(artirmaKismi, "*");
+    if(temp1 != NULL || temp2 != NULL)
+        return -2;
+
+    //kontrol karakterlerine gore bol
+    char *sagTaraf = strtok(kontrolKismi, "=<>!");
+    sagTaraf = strtok(NULL, "=<>!");
+    if(isdigit(sagTaraf[0]) == 1) //sag taraf digit mi
+        return atoi(sagTaraf);
+    return -1; //degilse -1 yani N demektir
+}
+
+int WhileNMi(char *satir){ //while ve do while formatlarinin tespiti
+    char *tempSatir = satir;
+    if(StartsWith("while(", satir) == 1){
+        SubString(tempSatir, satir, 6, strlen(satir)-7);
+    }else if(StartsWith("while (", satir) == 1){
+        SubString(tempSatir, satir, 7, strlen(satir)-8);
+    }else if(StartsWith("}while(", satir) == 1){
+        SubString(tempSatir, satir, 7, strlen(satir)-8);
+    }else if(StartsWith("}while (", satir) == 1){
+        SubString(tempSatir, satir, 8, strlen(satir)-9);
+    }else if(StartsWith("} while (", satir) == 1){
+        SubString(tempSatir, satir, 9, strlen(satir)-10);
+    }else if(StartsWith("} while(", satir) == 1){
+        SubString(tempSatir, satir, 8, strlen(satir)-9);
+    }else
+        return;
+
+    //char *whileIci = tempSatir;
+    char *solTaraf = strtok(tempSatir, "=<>!");
+    char *sagTaraf = strtok(NULL, "=<>!");
+
+    solTaraf = Trim(solTaraf);
+    sagTaraf = Trim(sagTaraf);
+
+    // sag taraf NULL ise N'e kadar gidiyordur, kontrol yoktur
+    if(sagTaraf == NULL){
+        return -1;
+    }
+    //sag tarafin ilk karakteri digitse N'e kadar gitmiyordur
+    if(isdigit(sagTaraf[0]) == 1)
+        return atoi(sagTaraf);
+    return -1;
+}
+
+//Sayac, bitis Kontrolu ve dosyanin kendisinin pointeri
+int DoWhile(int sayac[], int bitisKontrol, FILE **dosya){
+    char satir[1000];
+    fgets(satir,1000,*dosya);
+    char *trimSatir = Trim(satir);
+
+    if(BlokBaslatMi(trimSatir) == 1){ //eger blok baslat ise
+        bitisKontrol--; //blogun bitip bitmedigini kontrol et sifir olmadigi surece do while bitmemiistir
+        sayac[1] = DoWhile(sayac, bitisKontrol, &(*dosya));
+        return sayac[1];
+    }
+
+    if(KodDegilMi(trimSatir) == 1){ //blok baslat degilse kod mu degil mi
+        DoWhile(sayac, bitisKontrol, &(*dosya)); //recursive
+        return sayac[1];
+    }
+    //do while bitisi icin ayri bir kontrol yapmak gerekti
+    int doWhileBitis = StartsWith("}while", trimSatir);
+    if(doWhileBitis != 1)
+         doWhileBitis = StartsWith("} while", trimSatir);
+
+    if(doWhileBitis == 1){ //do while bitmisse
+        bitisKontrol++;
+
+        int temp = WhileNMi(trimSatir); //while icine bak
+        if(temp == -1)
+            sayac[0]++; //katmani arttir
+        else
+            sayac[1] *= temp; //do ---icinde 3 satir olsun-- while(i<=10) ise 10*n yap
+
+        if(bitisKontrol < 0) //henuz bitmemisse, yani icteki katmanlardan biri bitmistir
+            sayac[1] = DoWhile(sayac, bitisKontrol, &(*dosya));
+
+        return sayac[1];
+    }
+//------her satirda bunlarin tamami yeniden kontrol ediliyor-----
+
+    int doWhileMi = StartsWith("do", trimSatir); //do while icinde do while varsa
+    if(doWhileMi == 1){
+        int temp = StartsWith("do{", trimSatir);
+        if(temp != 1)
+            temp = StartsWith("do {", trimSatir);
+        if(temp == 1){
+            bitisKontrol--;
+            DoWhile(sayac, bitisKontrol, &(*dosya));
+        }else
+            DoWhile(sayac, bitisKontrol, &(*dosya));
+        return sayac[1];
+    }
+
+    int forMu = StartsWith("for", trimSatir); //for varsa
+    int whileMi = StartsWith("while", trimSatir); //while varsa
+    if(forMu == 1 || whileMi == 1){ //for while ikisinden biri varsa
+        int temp = 0;
+        if(forMu == 1)
+            temp = ForNMi(trimSatir);
+        else
+            temp = WhileNMi(trimSatir);
+
+        int parantezKontrol = 0; //satirin sonunda mi altinda mi parantez var
+        if(trimSatir[strlen(trimSatir)-1] == '{')
+            parantezKontrol = 1;
+
+        if(temp == -1){//döngü n'e kadar gidiyor
+            sayac[0]++;
+            DonguIci(sayac, parantezKontrol, &(*dosya));
+        }else if(temp == -2){//döngü n logn'e kadar gidiyor
+            sayac[2]++;
+            DonguIci(sayac, parantezKontrol, &(*dosya));
+        }else
+            sayac[1] += (temp * DonguIci(sayac, parantezKontrol, &(*dosya)));
+        sayac[1] = DoWhile(sayac, bitisKontrol, &(*dosya));
+        return sayac[1];
+    }
+
+    if(BlokBitirMi(trimSatir) == 1){ //blok bitir mi
+        bitisKontrol++; //bitis kontrolu arttir
+        if(bitisKontrol < 0) //sifir oldugunda blok bitmistir
+            sayac[1] = DoWhile(sayac, bitisKontrol, &(*dosya));
+        return sayac[1]; //bir onceki fonk. nerede kaldiysa return return .... en basa kadar cikiyor
+    }
+
+    /*size_t n = sizeof(degiskenTipleriByteDegerleri)/sizeof(degiskenTipleriByteDegerleri[0]);
+    for(int i=0;i<n;i++){
+        if(StartsWith(degiskenTipleri[i],trimSatir) == 1){
+            YerKarmasikligiHesapla(sayac, trimSatir);
+            sayac[1] = DoWhile(sayac, bitisKontrol, &(*dosya));
+            return sayac[1];
+        }
+    }*/
+
+    sayac[1]++;
+    sayac[1] = DoWhile(sayac, bitisKontrol, &(*dosya));
+    return sayac[1];
+}
+
+// degisken tiplerini ele alarak hesaplanan yer karmasikligi
+void YerKarmasikligiHesapla(char *trimSatir, int yerKarmasikligi[]){
+    //sonradan tip ekleme olmasi halinde dinamik olsun diye ekledikm
+    size_t n = sizeof(degiskenTipleriByteDegerleri)/sizeof(degiskenTipleriByteDegerleri[0]);
+    char *temp = strstr(trimSatir, "["); //parantez var mi varsa dizidir
+
+    for(int i=0;i<n;i++){ //hangi degisken oldugunu bulmak icin n e kadar
+        if(StartsWith(degiskenTipleri[i],trimSatir) == 1){
+            if(temp == NULL){//dizi yok   //int i,j=10,x;
+                char parcalanacakKisim[] = "";
+                SubString(parcalanacakKisim, trimSatir, strlen(degiskenTipleri[i]), strlen(trimSatir)-strlen(degiskenTipleri[i]));
+                int degiskenSayisi = 0;
+                char *parca = strtok(parcalanacakKisim , ",");
+                while(parca != NULL){
+                    degiskenSayisi++;
+                    parca = strtok(NULL , ",");
+                }
+                yerKarmasikligi[0] += (degiskenSayisi * degiskenTipleriByteDegerleri[i]); //byte degerine gore hesaphesaplanan yer
+                break;
+            }else{//satýrda dizi tanýmlamasý var    //int arr[n];
+                char *tempSatir = trimSatir;
+                int boyut = 0, hesap = 0;
+                char *parca = strtok(tempSatir , "["); //arr
+                parca = strtok(NULL , "[");//n]
+                char sayi[] = "";
+
+                while(parca != NULL){
+                    if(isdigit(parca[0])){ //parcanin ilk karakteri digit mi
+                        for(int i=0; parca[i] != ']';i++){ //kapatmayi gorene kadar gez
+                            sprintf(sayi, "%s%c", sayi,parca[i]); //
+                        }
+                        //printf("%s",sayi); dizinin boyutunu tespit ettikten sonra inte cevir
+                        hesap += (atoi(sayi) * degiskenTipleriByteDegerleri[i]);
+                    }else{ //digit degilse boyutu arttir
+                        boyut++; //multidimensional array ise boyutu arttir. yer karmasikligi fonl. gonderecegiz. O(1), O(n) ...
+                    }
+                    parca = strtok(NULL , "[");
+                }
+                if(hesap == 0) //icinde hic sayi yoksa
+                    hesap = degiskenTipleriByteDegerleri[i];
+                yerKarmasikligi[boyut] += hesap;
+                break;
+            }
+        }
+    }
+}
+
+//for ve while icini hesaplayan fonksiyon.. do while ile ayni sayilir
+int DonguIci(int sayac[], int bitisKontrol, FILE **dosya){//sayac dizizi | 0 > katman | 1 > statement | 2 > n çarpaný(dizi) | 3 > n üssü(dizi boyutu) | 4 > yer karmaþýklýðý statement
+    char satir[1000];
+    fgets(satir,1000,*dosya);
+    char *trimSatir = Trim(satir);
+
+    if(BlokBaslatMi(trimSatir) == 1){
+        bitisKontrol--;
+        sayac[1] = DonguIci(sayac, bitisKontrol, &(*dosya));
+        return sayac[1];
+    }
+
+    if(KodDegilMi(trimSatir) == 1){
+        DonguIci(sayac, bitisKontrol, &(*dosya));
+        return sayac[1];
+    }
+
+    int doWhileMi = StartsWith("do", trimSatir);
+    if(doWhileMi == 1){
+        int temp = StartsWith("do{", trimSatir);
+        if(temp != 1)
+            temp = StartsWith("do {", trimSatir);
+        if(temp == 1)
+            DoWhile(sayac, -1, &(*dosya));
+        else
+            DoWhile(sayac, 0, &(*dosya));
+        DonguIci(sayac, bitisKontrol, &(*dosya));
+        return sayac[1];
+    }
+
+    int forMu = StartsWith("for", trimSatir);
+    int whileMi = StartsWith("while", trimSatir);
+    if(forMu == 1 || whileMi == 1){
+        int temp = 0;
+        if(forMu == 1)
+            temp = ForNMi(trimSatir);
+        else
+            temp = WhileNMi(trimSatir);
+
+        if(trimSatir[strlen(trimSatir)-1] == '{')
+            bitisKontrol--;
+
+        if(temp == -1){
+            sayac[0]++;
+            DonguIci(sayac, bitisKontrol, &(*dosya));
+        }else if(temp == -2){//döngü n logn'e kadar gidiyor
+            sayac[2]++;
+            DonguIci(sayac, bitisKontrol, &(*dosya));
+        }else
+            sayac[1] += (temp * DonguIci(sayac, bitisKontrol, &(*dosya)));
+        return sayac[1];
+    }
+
+    if(BlokBitirMi(trimSatir) == 1){ //blok bitmisse
+        bitisKontrol++; //bitis kontrolu arttir
+        if(bitisKontrol < 0)
+            sayac[1] = DonguIci(sayac, bitisKontrol, &(*dosya));
+        return sayac[1];
+    }
+
+    //ORNEK int x = i*10 gibi bir satir verilseydi.. (eksik kaldi bu kisim)
+
+    /*size_t n = sizeof(degiskenTipleriByteDegerleri)/sizeof(degiskenTipleriByteDegerleri[0]);
+    for(int i=0;i<n;i++){
+        if(StartsWith(degiskenTipleri[i],trimSatir) == 1){
+            YerKarmasikligiHesapla(sayac, trimSatir);
+            sayac[1] = DonguIci(sayac, bitisKontrol, &(*dosya));
+            return sayac[1];
+        }
+    }*/
+
+    //sayac[sayac[0]+1]++;   //katmanlarýn statementlarý
+    sayac[1]++;
+    sayac[1] = DonguIci(sayac, bitisKontrol, &(*dosya));
+    return sayac[1];
+}
+
+//cmd de calistir
+void KodCalistir(){
+    double gecenSure = 0.0;
+    char codeName[100]; //
+    char projeYolu[PATH_MAX];
+    char code[1000];
+
+    printf("Dosya adini (uzantisi olmadan) giriniz: ");
+    getcwd(projeYolu, sizeof(projeYolu)); //projenin yolunu al
+    gets(codeName); //dosya ismini al
+    printf("\n");
+
+    sprintf(code, "%s.txt", codeName); //.txt yaz
+    FILE *dosya = fopen(code, "r");
+    if(dosya == NULL){
+        printf("Dosya bulunamadi.\n\n");
+        return;
+    }
+    fclose(dosya);
+
+    sprintf(code, "cd %s", projeYolu); //proje yoluna cd ile git
+    system(code);//projenin olduðu dizine girdik
+
+    sprintf(code, "ren %s.txt %s.c", codeName, codeName);
+    system(code);//projeyi .c tipine çevirdik
+
+    sprintf(code, "gcc -o %s_ %s.c", codeName, codeName);
+    system(code);//verilen kod "dosyaAdi_" þeklinde derlendi
+
+    sprintf(code, "%s_", codeName);//dosyaAdi_ þeklinde çalýþacak code güncellendi
+
+    clock_t baslangicZamani = clock();
+    system(code);//kod calistirildi
+    clock_t bitisZamani = clock();
+
+    gecenSure += (double)(bitisZamani - baslangicZamani) / CLOCKS_PER_SEC;
+    printf("\tVerilen kodun calisma suresi %f saniye.\n\n", gecenSure);
+
+    sprintf(code, "ren %s.c %s.txt", codeName, codeName);
+    system(code);//projeyi .txt tipine geri çevirdik
+}
+
+void KarmasiklikHesapla(char *dosyaAdi){
+
+    sprintf(dosyaAdi, "%s.txt", dosyaAdi);
+    FILE *dosya = fopen(dosyaAdi, "r");
+    if(dosya == NULL){
+        printf("Dosya bulunamadi.\n\n");
+        return;
+    }else
+    {
+
+        int genelDonguSayisi = 0, bigO = 0, mainFonksiyonMu = 0;
+        //en son hangisi en buyukse genelTablo dizisinden bulacagim
+        int genelTablo[100][8] = {0}; //ornek: ayri ayri for... while... for... gibi ayri ayri bilgileri tut
+        //BigO'lari tutan dizi
+        int yerKarmasikligi[5] = {0};//1 - n - n^2 - n^3 - n^4
+
+        while(!feof(dosya)){
+            char satir[1000];
+            fgets(satir,1000,dosya);
+
+            char *trimSatir = Trim(satir);
+            //printf("%s\n",trimSatir);
+
+            //SADECE MAIN FONKSIYONUNUN ICINDEKILERI HESAPLIYOR. FONKSIYONLARI DEGISKEN GIBI ALIR
+            if(StartsWith("void main", trimSatir) == 1 || StartsWith("int main", trimSatir) == 1)
+                mainFonksiyonMu = 1;
+
+            if(BlokBaslatMi(trimSatir) == 1){
+                continue;
+            }
+
+            if(KodDegilMi(trimSatir) == 1)
+                continue;
+
+            int doWhileMi = StartsWith("do", trimSatir);
+            if(doWhileMi == 1){
+                int temp = StartsWith("do{", trimSatir);
+                if(temp != 1)
+                    temp = StartsWith("do {", trimSatir);
+                if(temp == 1)
+                    DoWhile(genelTablo[genelDonguSayisi], -1, &dosya);
+                else
+                    DoWhile(genelTablo[genelDonguSayisi], 0, &dosya);
+                genelDonguSayisi++;
+                continue;
+            }
+
+            int forMu = StartsWith("for", trimSatir);
+            int whileMi = StartsWith("while", trimSatir);
+            if(forMu == 1 || whileMi == 1){
+                int temp = 0;
+                if(forMu == 1)
+                    temp = ForNMi(trimSatir);
+                else
+                    temp = WhileNMi(trimSatir);
+
+                int parantezKontrol = 0;
+                if(trimSatir[strlen(trimSatir)-1] == '{')
+                    parantezKontrol = 1;
+
+                if(temp == -1){
+                    genelTablo[genelDonguSayisi][0] = 1;
+                    DonguIci(genelTablo[genelDonguSayisi], parantezKontrol, &dosya);
+                }else if(temp == -2){//döngü n logn'e kadar gidiyor
+                    genelTablo[genelDonguSayisi][2] = 1;
+                    DonguIci(genelTablo[genelDonguSayisi], parantezKontrol, &dosya);
+                }else
+                    genelTablo[genelDonguSayisi][1] = (temp*DonguIci(genelTablo[genelDonguSayisi], parantezKontrol, &dosya));
+
+                genelDonguSayisi++;
+                continue;
+            }
+
+            if(BlokBitirMi(trimSatir) == 1){
+                continue;
+            }
+
+            int kontrol = 0;
+            if(mainFonksiyonMu == 1){
+                size_t n = sizeof(degiskenTipleriByteDegerleri)/sizeof(degiskenTipleriByteDegerleri[0]);
+                for(int i=0;i<n;i++){
+                    if(StartsWith(degiskenTipleri[i],trimSatir) == 1){
+                        YerKarmasikligiHesapla(trimSatir, yerKarmasikligi);
+                        kontrol++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        printf("\n\tYer Karmasikligi = (");
+        int yazdiMi = 0;
+        if(yerKarmasikligi[4] > 0){
+            printf("%dn^4",yerKarmasikligi[4]);
+            yazdiMi = 1;
+        }
+        if(yerKarmasikligi[3] > 0){
+            if(yazdiMi == 1)
+                printf(" + %dn^3",yerKarmasikligi[3]);
+            else
+                printf("%dn^3",yerKarmasikligi[3]);
+            yazdiMi = 1;
+        }
+        if(yerKarmasikligi[2] > 0){
+            if(yazdiMi == 1)
+                printf(" + %dn^2",yerKarmasikligi[2]);
+            else
+                printf("%dn^2",yerKarmasikligi[2]);
+            yazdiMi = 1;
+        }
+        if(yerKarmasikligi[1] > 0){
+            if(yazdiMi == 1)
+                printf(" + %dn",yerKarmasikligi[1]);
+            else
+                printf("%dn",yerKarmasikligi[1]);
+            yazdiMi = 1;
+        }
+        if(yerKarmasikligi[0] > 0){
+            if(yazdiMi == 1)
+                printf(" + %d",yerKarmasikligi[0]);
+            else
+                printf("%d",yerKarmasikligi[0]);
+        }
+        if(yerKarmasikligi[0] == 0 && yerKarmasikligi[1] == 0 && yerKarmasikligi[2] == 0 && yerKarmasikligi[3] == 0 && yerKarmasikligi[4] == 0)
+            printf("0");
+
+        printf(")\n\n");
+
+        //En buyuk karmasikligi genel tablodan bul
+        int nBuyuklugu = 0, logBuyuklugu = 0;
+        for(int i=0;i<100;i++){
+            if(genelTablo[i][0] == 0 && genelTablo[i][1] == 0 && genelTablo[i][2] == 0)
+                break;
+            if(genelTablo[i][0] > nBuyuklugu){
+                nBuyuklugu = genelTablo[i][0];
+                logBuyuklugu = genelTablo[i][2]; //LOG HESABI SORUNLU ?
+            }else if(genelTablo[i][2] > logBuyuklugu){
+                logBuyuklugu = genelTablo[i][2];
+            }
+        }
+
+        if(nBuyuklugu == 0 && logBuyuklugu == 0)
+            printf("\tZaman Karmasikligi = O(1)");
+        else if(nBuyuklugu == 1 && logBuyuklugu == 0)
+            printf("\tZaman Karmasikligi = O(n)");
+        else if(nBuyuklugu > 1 && logBuyuklugu == 0)
+            printf("\tZaman Karmasikligi = O(n^%d)",nBuyuklugu);
+        else if(nBuyuklugu == 0 && logBuyuklugu == 1)
+            printf("\tZaman Karmasikligi = O(log n)");
+        else if(nBuyuklugu == 0 && logBuyuklugu > 1)
+            printf("\tZaman Karmasikligi = O(log^%d n)",logBuyuklugu);
+        else if(nBuyuklugu == 1 && logBuyuklugu == 1)
+            printf("\tZaman Karmasikligi = O(n * log n)");
+        else if(nBuyuklugu > 1 && logBuyuklugu > 1)
+            printf("\nZaman Karmasikligi = O((n^%d)(log^%d n))",nBuyuklugu,logBuyuklugu);
+        printf("\n\n");
+    }
+    fclose(dosya);
+}
+
+void main()
+{
+    char secim = 'x';
+    while(1){
+        printf("Asagidakilerden secim yapiniz:\n--------------------------------------------------------\n\t0 : Cikis\n\t1 : Karmasiklik Hesapla\n\t2 : Calisma Suresi Hesapla\n\t3 : Konsolu Temizle\n--------------------------------------------------------\nSecim : ");
+        scanf("%c",&secim);
+        getchar();
+        switch(secim){
+            case '1':
+                printf("Karmasiklik hesaplanacak dosyanin adini (uzantisi olmadan) giriniz : ");
+                char temp[100];
+                gets(temp);
+                KarmasiklikHesapla(temp);
+                break;
+            case '2':
+                KodCalistir();
+                break;
+            case '3':
+                system("cls");
+                break;
+            case '0':
+                printf("Program bitiyor...\n");
+                return;
+            default:
+                printf("Yanlis Karakter!\n");
+        }
+    }
+    return;
+}

@@ -1,0 +1,33 @@
+void printAllNumbersThenAllPairSums(int arr[], int size)
+{
+	for(int i=0;i<size;i++)
+	{
+		if()
+		{
+			printf("%d\n",arr[i]);
+		}
+		print("asd");
+	}
+	
+	
+	for(int i=0;i<10;i++)
+	{
+		int y = 0;
+		for(int j=0;j<size;j++)
+		{
+			int x = 0;
+			for(int j=0;j<10;j++)
+			{
+				printf("%d\n",arr[i] + arr[j]);
+				printf("%d\n",arr[i] + arr[j]);
+				printf("%d\n",arr[i] + arr[j]);
+				printf("%d\n",arr[i] + arr[j]);
+				printf("%d\n",arr[i] + arr[j]);
+				for(int j=0;j<x;j++)
+				{
+					printf("%d\n",arr[i] + arr[j]);
+				}
+			}
+		}
+	}
+}
